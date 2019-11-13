@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const router = require("express").Router();
+const jwt = require("jsonwebtoken");
 
+const secrets = require("../config/secrets");
 const Users = require("../models/users-model");
 const validateLogin = require("../middleware/validateLogin-middleware");
 const validateRegistration = require("../middleware/validateRegistration-middleware");
@@ -25,7 +27,10 @@ router.post("/login", validateLogin, (req, res) => {
     Users.getByUsername(username)
     .then(user => {
         if (user && bcrypt.compareSync(password, user.password)) {
-            res.json({ message: `Welcome, ${user.username}!` })
+
+            const token = generateToken(user);
+
+            res.json({ message: `Welcome, ${user.username}!`, token })
         } else {
             res.status(401).json({ message: "Please provide valid credentials." })
         }
@@ -35,5 +40,16 @@ router.post("/login", validateLogin, (req, res) => {
         res.status(500).json({ error: "Failure to log in. Please try again later." })
     })
 });
+
+function generateToken(user) {
+    const subject = {
+        id: user.id,
+        username: user.username
+    }
+    
+    const options = { expiresIn: '8h' }
+
+    return jwt.sign(subject, secrets.jwtSecret, options);
+};
 
 module.exports = router;
